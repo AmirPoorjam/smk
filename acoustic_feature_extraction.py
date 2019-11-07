@@ -3,8 +3,6 @@
 import numpy as np
 import librosa
 import scipy
-import parselmouth
-from parselmouth.praat import call
 import statistics
 
 def array2vector(array):
@@ -18,12 +16,6 @@ def Hz2Mel(f_Hz):
 def Mel2Hz(f_Mel):
     f_Hz = 1000 * (10**((np.log10(2) * f_Mel)/1000) - 1);
     return f_Hz
-
-def framing(sig,Segment_length,Segment_shift):
-    Frames = librosa.util.frame(sig, Segment_length, Segment_shift).T
-    # f = scipy.signal.detrend(f, type='constant')
-    # Frames = (f, f.shape[1], f.shape[0])
-    return Frames
 
 def Hz2Bark(f_Hz):
     f_bark = 6 * np.arcsinh(f_Hz / 600)
@@ -193,7 +185,7 @@ def delta_delta_feature_post_processing(features):
 def calculate_num_vad_frames(signal, MFCCParam, fs):
     Segment_length = round(MFCCParam['FLT'] * fs)
     Segment_shift = round(MFCCParam['FST'] * fs)
-    Frames = framing(signal, Segment_length, Segment_shift)[0]
+    Frames = librosa.util.frame(signal, Segment_length, Segment_shift).T
     win = hamming(Segment_length)
     win_repeated = np.tile(win, (Frames.shape[0], 1))
     windowed_frames = np.multiply(Frames, win_repeated)
@@ -203,6 +195,8 @@ def calculate_num_vad_frames(signal, MFCCParam, fs):
     return len(np.where(vad_ind)[0])
 
 def measurePitch(signal, f0min, f0max, unit, time_step):
+    import parselmouth
+    from parselmouth.praat import call
     sound = parselmouth.Sound(signal)  # read the sound
     duration = call(sound, "Get total duration")  # duration
     pitch = call(sound, "To Pitch", time_step, f0min, f0max)  # create a praat pitch object
@@ -230,6 +224,8 @@ def measurePitch(signal, f0min, f0max, unit, time_step):
     return frame_level_features, recording_level_features
 
 def measureFormants(signal, f0min, f0max):
+    import parselmouth
+    from parselmouth.praat import call
     sound = parselmouth.Sound(signal)  # read the sound
     pointProcess = call(sound, "To PointProcess (periodic, cc)", f0min, f0max)
     formants = call(sound, "To Formant (burg)", 0.0025, 5, 5000, 0.025, 50)
@@ -274,18 +270,18 @@ def measureFormants(signal, f0min, f0max):
     return all_formants
 
 def calculate_CI(mu,sigma,N,alpha):
-    # This function calculates the estimate of the population mean and        %
-    # the alpha % confidence interval of the population mean for the sampel   %
-    # size more than 30, using the Z-distribution table.                      %
-    # Inputs:                                                                 %
-    #       mu: sample mean                                                   %
-    #       sigma: sample standard deviation                                  %
-    #       N: number of samples                                              %
-    #       alpha: confidence level (either 95 or 99, default = 95)           %
-    # Outputs:                                                                %
-    #       ci: alpha % confidence interval of the population mean            %
-    #       lb: lower bound                                                   %
-    #       ub: upper bound                                                   %
+    # This function calculates the estimate of the population mean and the    #
+    # alpha % confidence interval of the population mean for the sampel size  #
+    # more than 30, using the Z-distribution table.                           #
+    # Inputs:                                                                 #
+    #       mu: sample mean                                                   #
+    #       sigma: sample standard deviation                                  #
+    #       N: number of samples                                              #
+    #       alpha: confidence level (either 95 or 99, default = 95)           #
+    # Outputs:                                                                #
+    #       ci: alpha % confidence interval of the population mean            #
+    #       lb: lower bound                                                   #
+    #       ub: upper bound                                                   #
     ###### Amir H. Poorjam ####################################################
     if alpha == 95:
         z_val = 1.96
@@ -306,7 +302,7 @@ def calculate_CI(mu,sigma,N,alpha):
 def main_mfcc_function(orig_signal,fs,MFCCParam):
     Segment_length=round(MFCCParam['FLT']*fs)
     Segment_shift=round(MFCCParam['FST']*fs)
-    Frames = framing(orig_signal, Segment_length, Segment_shift)[0]
+    Frames = librosa.util.frame(orig_signal, Segment_length, Segment_shift).T
     win = hamming(Segment_length)
     win_repeated = np.tile(win,(Frames.shape[0],1))
     windowed_frames = np.multiply(Frames,win_repeated)
@@ -327,8 +323,7 @@ def main_mfcc_function(orig_signal,fs,MFCCParam):
 def main_rasta_plp_function(orig_signal,fs,PLP_Param):
     Segment_length = round(PLP_Param['FLT'] * fs)
     Segment_shift = round(PLP_Param['FST'] * fs)
-    # Frames = framing(orig_signal, Segment_length, Segment_shift)[0]
-    Frames = framing(orig_signal, Segment_length, Segment_shift)
+    Frames = librosa.util.frame(orig_signal, Segment_length, Segment_shift).T
     win = hamming(Segment_length)
     win_repeated = np.tile(win, (Frames.shape[0], 1))
     windowed_frames = np.multiply(Frames, win_repeated)
