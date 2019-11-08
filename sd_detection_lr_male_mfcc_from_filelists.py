@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score, roc_curve,auc
 from acoustic_feature_extraction import array2vector as a2v
 import pandas as pd
 import matplotlib.pyplot as plt
-from acoustic_feature_extraction import calculate_CI as CI
+from acoustic_feature_extraction import calculate_CI as ci
 from os import listdir
 
 
@@ -23,7 +23,7 @@ path_mfcc_features = input('Please enter the path to Mixer6 MFCC features: ')
 path_to_filelists = input('Please enter the path to filelists: ')
 
 if path_mfcc_features[-1] != '/':
-    path_mfcc_features = path_mfcc_features + '/M/'
+    path_mfcc_features = path_mfcc_features + '/'
 if path_to_filelists[-1] != '/':
     path_to_filelists = path_to_filelists + '/'
 
@@ -75,9 +75,9 @@ for itx in range(total_training_file):
                 training_features_mfcc = acoustic_features_mfcc
             else: # when the array is not empty
                 training_features_mfcc = np.append(training_features_mfcc, acoustic_features_mfcc, axis=0)
-            if trn_labels[rx] == 'Y':  # make numeric labels (Y:smoker --> 1, N:nonsmoker --> 2)
+            if trn_labels[rx] == 'Y':  # make numeric labels (Y:smoker --> 1)
                 trn_label_numeric.append(1)
-            elif trn_labels[rx] == 'N': # make numeric labels (Y:smoker --> 1, N:nonsmoker --> 2)
+            elif trn_labels[rx] == 'N': # make numeric labels (N:nonsmoker --> 2)
                 trn_label_numeric.append(2)
         else:
             print('no feature file name -- training -- %d, %d' % (itx,rx))
@@ -170,7 +170,7 @@ for itx in range(total_training_file):
     top_x_accuracy.append(top_x_acc)
     top_x_accuracies.append(np.interp(mean_pmls, np.array([5,10,15,20,25,30,35,40,45,50]),top_x_acc))
     print(
-        'acc: %2.1f --> AUC: %2.1f --> top5: %2.1f --> top10: %2.1f --> top15: %2.1f --> top20: %2.1f --> top25: %2.1f --> top30: %2.1f' % (
+        'overal accuracy: %2.1f --> AUC: %2.1f --> top5: %2.1f --> top10: %2.1f --> top15: %2.1f --> top20: %2.1f --> top25: %2.1f --> top30: %2.1f' % (
         100 * acc, roc_auc, 100 * acc_top5p, 100 * acc_top10p, 100 * acc_top15p, 100 * acc_top20p, 100 * acc_top25p,
         100 * acc_top30p))
     accuracy_top5p  = np.append(accuracy_top5p, acc_top5p)
@@ -193,11 +193,11 @@ mean_tpr = np.mean(tprs, axis=0)
 mean_tpr[-1] = 1.0
 mean_auc = auc(mean_fpr, mean_tpr)
 std_auc = np.std(aucs, ddof=1)
-ci_auc = CI(mean_auc, std_auc, total_test_file, 95)[0]
+ci_auc = ci(mean_auc, std_auc, total_test_file, 95)[0]
 std_tpr = np.std(tprs, axis=0, ddof=1)
 tprs_std_upper = np.minimum(mean_tpr + std_tpr, 1)
 tprs_std_lower = np.maximum(mean_tpr - std_tpr, 0)
-ci_tprs,tprs_lower,tprs_upper = CI(mean_tpr, std_tpr, total_test_file, 95)
+ci_tprs,tprs_lower,tprs_upper = ci(mean_tpr, std_tpr, total_test_file, 95)
 plt.figure(0)
 plt.rcParams.update({'font.size': 24})
 plt.plot(mean_fpr, mean_tpr, color='b',label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f (CI))' % (mean_auc, ci_auc),lw=2,alpha=.8)
@@ -216,7 +216,7 @@ mean_top_x_accuracies = np.mean(top_x_accuracies, axis=0)
 std_top_x_accuracies = np.std(top_x_accuracies, axis=0, ddof=1)
 std_top_x_accuracies_upper = np.minimum(mean_top_x_accuracies + std_top_x_accuracies, 1)
 std_top_x_accuracies_lower = np.maximum(mean_top_x_accuracies - std_top_x_accuracies, 0)
-ci_mean_top_x_accuracies, mean_top_x_accuracies_lower, mean_top_x_accuracies_upper = CI(mean_top_x_accuracies, std_top_x_accuracies, total_test_file, 95)
+ci_mean_top_x_accuracies, mean_top_x_accuracies_lower, mean_top_x_accuracies_upper = ci(mean_top_x_accuracies, std_top_x_accuracies, total_test_file, 95)
 plt.figure(1)
 plt.plot(mean_pmls, 100*mean_top_x_accuracies, color='b', label=r'Mean Accuracy', lw=2, alpha=.8)
 plt.fill_between(mean_pmls, 100*mean_top_x_accuracies_lower, 100*mean_top_x_accuracies_upper, color='red',  alpha=.2,label=r'$\pm$ 95% CI')

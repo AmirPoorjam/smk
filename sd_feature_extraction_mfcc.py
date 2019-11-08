@@ -34,8 +34,8 @@ smoke_lbl = np.asarray(pd.read_csv(path_to_tabels + 'mx6_subjs.csv', usecols=['s
 ##### Finding metadata for each recording, extracting features, and saving with the corresponding names #####
 all_files = [f for f in listdir(sourcefoldedr) if f.endswith('.sph')]
 total_file = len(all_files)
-fidx = 0
-nmdx = 0
+fidx = 0 # will count the processed files
+nmdx = 0 # will count the files that do not have metadata
 for filename in all_files:
     print('%d / %d ' % (fidx + 1, total_file))
     signals, fs = librosa.load(sourcefoldedr+filename, mono=False, sr=None)
