@@ -1,4 +1,5 @@
-## Acoustic Features Calculation
+# Acoustic Features Calculation
+#### Amir H. Poorjam 2019 #####
 
 import numpy as np
 import librosa
@@ -14,7 +15,7 @@ def Hz2Mel(f_Hz):
     return Mel
 
 def Mel2Hz(f_Mel):
-    f_Hz = 1000 * (10**((np.log10(2) * f_Mel)/1000) - 1);
+    f_Hz = 1000 * (10**((np.log10(2) * f_Mel)/1000) - 1)
     return f_Hz
 
 def Hz2Bark(f_Hz):
@@ -168,7 +169,7 @@ def computeFFTCepstrum(windowed_frames, mfcc_bank, MFCCParam):
     ESpec = np.power(abs(np.fft.fft(windowed_frames, n=n_fft)),2).T
     ESpec = ESpec[0:int(n_fft/2), :]
     FBSpec = mfcc_bank.T @ ESpec
-    LogSpec = np.log(FBSpec + SmallNumber);
+    LogSpec = np.log(FBSpec + SmallNumber)
     Cep = scipy.fftpack.dct(LogSpec.T,norm='ortho').T
     if Cep.shape[0]>2:
         Cep = Cep[0:MFCCParam['no']+1, :].T
@@ -300,6 +301,22 @@ def calculate_CI(mu,sigma,N,alpha):
 ##########################################################
     
 def main_mfcc_function(orig_signal,fs,MFCCParam):
+    # This function calculates the mel-frequency cepstral coefficients (MFCC)
+    # from the signal. It uses an enegy-based voice activity detection to
+    # exclude silent frames. It also calculates the delta and double-delta
+    # coefficients, and concatenates them to the MFCCs.
+    # Inputs:
+    #       orig_signal: array of single-channel signal of interest
+    #       fs: integer of sampling frequency
+    #       MFCCParam: dictionary of the MFCC parameters
+    # Outputs:
+    #       mfcc_coefficients_D_DD: matrix of size (n_frames x n_features)
+    #                               containing MFCC + delta + double-delta
+    #       vad_ind: 1-D array of indices of voiced and unvoiced frames
+    #                (0 unvoiced, 1: voiced)
+    #       Frames: signal re-shaped into a matrix of size
+    #               (n_frames x n_samples)
+    ###### Amir H. Poorjam 2019 #############################################
     Segment_length=round(MFCCParam['FLT']*fs)
     Segment_shift=round(MFCCParam['FST']*fs)
     Frames = librosa.util.frame(orig_signal, Segment_length, Segment_shift).T
@@ -308,19 +325,38 @@ def main_mfcc_function(orig_signal,fs,MFCCParam):
     windowed_frames = np.multiply(Frames,win_repeated)
     mfcc_bank = MyFilterBank(MFCCParam['NumFilters'],fs,MFCCParam['FminHz'],MFCCParam['FMaxHz'],MFCCParam['NFFT'])
     mfcc_coefficients = computeFFTCepstrum(windowed_frames, mfcc_bank, MFCCParam)
+    mfcc_coefficients_D = delta_delta_feature_post_processing(mfcc_coefficients)
+    mfcc_coefficients_DD = delta_delta_feature_post_processing(mfcc_coefficients_D)
+    mfcc_coefficients_D_DD = np.concatenate((mfcc_coefficients, mfcc_coefficients_D, mfcc_coefficients_DD), axis=1)
     if MFCCParam['vad_flag']==1:
         ss = 20 * np.log10(np.std(windowed_frames, axis=1,ddof=1) + 0.0000000001)
         max1 = np.max(ss)
         vad_ind = np.all(((ss > max1 - 30), (ss > -55)), axis=0)
-        mfcc_coefficients = mfcc_coefficients[vad_ind,:]
+        mfcc_coefficients_D_DD = mfcc_coefficients_D_DD[vad_ind,:]
     else:
         vad_ind=np.ones((Frames.shape[0]))
     if 'CMVN' in MFCCParam:
         if MFCCParam['CMVN'] == 1:
-            mfcc_coefficients = (mfcc_coefficients - np.tile(np.mean(mfcc_coefficients,axis=0), (mfcc_coefficients.shape[0],1))) / np.tile(np.std(mfcc_coefficients,axis=0,ddof=1),(mfcc_coefficients.shape[0], 1))
-    return mfcc_coefficients,vad_ind,Frames
+            mfcc_coefficients_D_DD = (mfcc_coefficients_D_DD - np.tile(np.mean(mfcc_coefficients_D_DD,axis=0), (mfcc_coefficients_D_DD.shape[0],1))) / np.tile(np.std(mfcc_coefficients,axis=0,ddof=1),(mfcc_coefficients_D_DD.shape[0], 1))
+    return mfcc_coefficients_D_DD,vad_ind,Frames
 
 def main_rasta_plp_function(orig_signal,fs,PLP_Param):
+    # This function calculates the perceptual linear predictive (PLP)
+    # coefficients from the signal. It uses an enegy-based voice
+    # activity detection to exclude silent frames. It also calculates
+    # the delta and double-delta coefficients, and concatenates them to the PLPs.
+    # Inputs:
+    #       orig_signal: array of single-channel signal of interest
+    #       fs: integer of sampling frequency
+    #       PLP_Param: dictionary of the PLP parameters
+    # Outputs:
+    #       rasta_plp_features_D_DD: matrix of size (n_frames x n_features)
+    #                               containing PLP + delta + double-delta
+    #       vad_ind: 1-D array of indices of voiced and unvoiced frames
+    #                (0 unvoiced, 1: voiced)
+    #       Frames: signal re-shaped into a matrix of size
+    #               (n_frames x n_samples)
+    ###### Amir H. Poorjam 2019 #############################################
     Segment_length = round(PLP_Param['FLT'] * fs)
     Segment_shift = round(PLP_Param['FST'] * fs)
     Frames = librosa.util.frame(orig_signal, Segment_length, Segment_shift).T
